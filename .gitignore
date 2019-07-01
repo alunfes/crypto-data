@@ -1,0 +1,8 @@
+/ignore/
+/Data/
+#/.ipynb/
+/.vscode/
+/crypto-data/
+*.csv
+*.dat
+log

@@ -1,16 +1,19 @@
 import requests
 import json
 import pandas as pd
-import numpy as np
 import os
+import time
+import threading
 from datetime import datetime
 from datetime import timedelta
 from OneMinutesData import OneMinutesData
+from S3Master import S3Master
+
 
 class CryptowatchDataGetter:
     @classmethod
     def check_csv_data(cls):
-        df = pd.read_csv('one_min_data.csv')
+        df = pd.read_csv('./Data/one_min_data.csv')
         dt = df['dt']
         ut = df['unix_time']
         return dt[len(dt)-1], ut[len(ut)-1]
@@ -50,16 +53,18 @@ class CryptowatchDataGetter:
         df = df.assign(low=one_min_data.low)
         df = df.assign(close=one_min_data.close)
         df = df.assign(size=one_min_data.size)
-        df.to_csv('one_min_data.csv',index=False)
+        df.to_csv('./Data/one_min_data.csv',index=False)
+        S3Master.remove_file('one_min_data.csv')
+        S3Master.save_file('./Data/one_min_data.csv')
 
     @classmethod
     def read_csv_data(cls):
-        df = pd.read_csv('one_min_data.csv')
+        df = pd.read_csv('./Data/one_min_data.csv')
         return df
 
     @classmethod
     def get_and_add_to_csv(cls):
-        if os.path.exists('one_min_data.csv'):
+        if os.path.exists('./Data/one_min_data.csv'):
             dt, unix_dt = cls.check_csv_data()
             df_ori = cls.read_csv_data()
             json_data = cls.get_data_from_crptowatch(after=unix_dt)
@@ -78,7 +83,8 @@ class CryptowatchDataGetter:
             df = df.assign(close=omd.close[from_ind:])
             df = df.assign(size=omd.size[from_ind:])
             df_ori = pd.concat([df_ori, df], ignore_index=True, axis=0)
-            df_ori.to_csv('one_min_data.csv',index=False)
+            df_ori.to_csv('./Data/one_min_data.csv',index=False)
+            cls.write_data_to_csv(omd)
         else:
             dt = datetime.now()+timedelta(minutes=-6001)
             res = cls.get_data_from_crptowatch(after=int(dt.timestamp()))
@@ -86,6 +92,16 @@ class CryptowatchDataGetter:
             cls.write_data_to_csv(omd)
 
 
+    @classmethod
+    def __start_one_min_data_downloader(cls):
+        while True:
+            cls.get_and_add_to_csv()
+            time.sleep(3600)
+
+    @classmethod
+    def initialize(cls):
+        th = threading.Thread(target=cls.__start_one_min_data_downloader)
+        th.start()
 
 
 if __name__ == '__main__':
