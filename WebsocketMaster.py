@@ -7,6 +7,7 @@ from statistics import mean, median,variance,stdev
 from datetime import datetime
 import pandas as pd
 import pytz
+import os
 import numpy as np
 from sortedcontainers import SortedDict
 from S3Master import S3Master
@@ -132,6 +133,7 @@ class TickData:
                     cls.exec_data = []
                     cls.num_exec_write += 1
                     S3Master.save_file('./Data/'+file_name)
+                    os.remove('./Data/'+file_name)
                     LineNotification.send_error('uploaded '+str(file_name))
 
     @classmethod
@@ -163,6 +165,7 @@ class TickData:
                     cls.num_btc_write += 1
             S3Master.save_file('./Data/' + file_name)
             S3Master.remove_trush()
+            os.remove('./Data/' + file_name)
             LineNotification.send_error('uploaded ' + str(file_name))
 
     @classmethod
